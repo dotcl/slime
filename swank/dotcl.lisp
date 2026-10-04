@@ -268,8 +268,20 @@
   (format nil "~S" (if (fboundp name) (symbol-function name) name)))
 
 (defimplementation find-definitions (name)
-  (declare (ignore name))
-  nil)
+  (let ((loc (and (symbolp name) (dotcl:function-source-location name))))
+    (when loc
+      (list (list (list (cond ((macro-function name) 'defmacro)
+                              ((fboundp name) 'defun)
+                              ((boundp name) 'defvar)
+                              ((find-class name nil) 'defclass)
+                              (t 'definition))
+                        name)
+                  (let ((file (probe-file (getf loc :file))))
+                    (if file
+                        (make-location (list :file (namestring file))
+                                       (list :line (getf loc :line)))
+                        (make-error-location "Source file ~A does not exist."
+                                             (getf loc :file)))))))))
 
 (defimplementation find-source-location (object)
   (declare (ignore object))
